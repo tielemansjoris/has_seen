@@ -1,0 +1,86 @@
+<?php
+
+function remove_seen_nodes($nid) {
+	$nids = array($nid);
+	remove_seen_multiple($nids);
+}
+
+function remove_seen_multiple($nids) {
+	db_delete('has_seen')
+    ->condition('nid', $nids, 'IN')
+    ->execute();
+}
+
+function remove_seen_nodes_uid($uid) {
+	db_delete('has_seen')
+	 ->condition('uid', $uid)
+	 ->execute();
+}
+
+function add_seen($nid, $uid) {
+	db_merge('has_seen')
+	->key(array('nid' => $nid, 'uid' => $uid))
+	->fields(array(
+	  'nid' => $nid,
+	  'uid' => $uid,
+	  )
+	)
+	->execute();
+}
+
+function has_seen_node_view($node, $view_mode, $langcode) {
+	global $user;
+
+	if (user_is_logged_in() && $node->type == 'forum_topic') {
+		add_seen($node->nid, $user->uid);
+	}
+}
+
+
+function has_seen_node_update($node) {
+	remove_seen_nodes($node->nid);
+}
+
+function has_been_seen($nid) {
+	$nids = array($nid);
+	has_been_seen_multiple($nids);
+}
+
+function has_been_seen_multiple($nids) {
+	global $user;
+
+	if (user_is_logged_in()) {
+
+	$uid = $user->uid;
+	$results = array();
+	$result = db_select('has_seen', 'hs')
+    ->fields('hs', array('nid'))
+    ->condition('nid', $nids, 'IN')
+    ->condition('uid', $uid)
+    ->execute();
+
+     while($record = $result->fetchAssoc()) {
+        array_push($results, $record['nid']);
+    }
+    return $results;
+	}
+	return array();
+}
+
+function has_seen_views_post_execute(&$view) {
+	if ($view->vid == '13') {
+		$nids = array();
+		foreach ($view->result as $key => $value) {
+			array_push($nids, $value->nid);
+		}
+		$seennids = has_been_seen_multiple($nids);
+		foreach ($view->result as $key => $value) {
+			if (in_array($value->nid, $seennids)) {
+				$view->result[$key]->has_seen = TRUE;
+			}
+			else {
+				$view->result[$key]->has_seen = FALSE;
+			}
+		}
+	}
+}

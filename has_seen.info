@@ -1,0 +1,6 @@
+name = Has Seen
+description = Marks unseen nodes per user.
+package = Dropsolid
+core = 7.x
+php = 5
+version = "7.x-1.0"
